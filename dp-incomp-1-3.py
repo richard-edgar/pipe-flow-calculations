@@ -38,7 +38,7 @@ class InputScreen:
 
         # Entry internal diameter
 
-        rowvar=1
+        rowvar = 1
         self.dia_entry = ttk.Entry(self.mainframe, width=15,
                                    textvariable=self.dia_int)
         self.dia_entry.grid(column=2, row=rowvar, sticky=("W", "E"))
@@ -151,7 +151,6 @@ class InputScreen:
 
         self.dia_entry.focus()
         self.root.bind('<Return>', lambda x: self.calculate())
-
 
     def deltaPset(self, dp):
         dp = '{:0.2f}'.format(dp)
