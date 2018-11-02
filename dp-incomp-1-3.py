@@ -99,8 +99,9 @@ class InputScreen:
         # Execute calculation
 
         rowvar += 1
-        ttk.Button(self.mainframe, text="Calculate",
-                   command=lambda: self.calculate()).grid(column=2, row=rowvar, sticky="W")
+        self.exec = ttk.Button(self.mainframe, text="Calculate", command=lambda: self.calculate())
+        self.exec.grid(column=2, row=rowvar, sticky="W")
+        self.root.bind('<Return>', lambda x: self.exec.invoke())
         
         # Labels to contain programme outputs
 
@@ -150,8 +151,7 @@ class InputScreen:
             child.grid_configure(padx=5, pady=5)
 
         self.dia_entry.focus()
-        self.root.bind('<Return>', lambda x: self.calculate())
-
+ 
     def deltaPset(self, dp):
         dp = '{:0.2f}'.format(dp)
         self.deltaP.set(dp)
