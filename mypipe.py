@@ -3,48 +3,11 @@ import math
 
 class Pipe:
 
-    def __init__(self, internal_diameter, roughness, length, fluid):
+    def __init__(self, internal_diameter, roughness, length):
         self.int_dia = internal_diameter
         self.roughness = roughness
         self.length = length
-        self.fluid = fluid
-        self.velocity = 0
-        self.Re = 0
-        self.f = 0
-        self.deltaP = 0
-
-    def update(self, fluid, flowrate):
-        self.v(flowrate)
-        self.reynolds(fluid)
-        rel_rough = self.roughness / self.int_dia
-        f = 1.0
-        for i in range(1000):
-            fnew = (1/(-2 * math.log10(rel_rough / 3.7 + 2.51
-                    / self.Re / math.sqrt(f)))) ** 2
-            if abs(fnew-f) < 0.00001:
-                break
-            f = fnew
-        self.f = fnew
-        self.deltaP = self.velocity ** 2\
-            * (self.f * self.length / self.int_dia) * fluid.density / 2
-
-    def v(self, flowrate):
-        area = math.pi * self.int_dia ** 2 / 4
-        self.velocity = flowrate / area
-
-    def reynolds(self, fluid):
-        self.Re = self.int_dia * self.velocity\
-                  * fluid.density / fluid.viscosity
-
-    def int_dia_set(self, internal_diameter):
-        self.int_dia = internal_diameter
-
-    def roughness_set(self, roughness):
-        self.roughness = roughness
-
-    def length_set(self, length):
-        self.length = length
-
+        self.rel_rough = self.roughness / self.int_dia
 
 class Fluid:
 
@@ -52,56 +15,70 @@ class Fluid:
         self.density = density
         self.viscosity = viscosity
 
-    def density_set(self, density):
-        self.density = density
 
-    def viscosity_set(self, viscosity):
-        self.viscosity = viscosity
+class Flow:
+
+    def __init__(self, pipe, fluid, flowrate):
+        self.pipe = pipe
+        self.fluid = fluid
+        self.flowrate = flowrate
+        self.v = self.velocity()
+        self.NRe = self.reynolds()
+        self.darcy = self.f_darcy()
+        self.rel_rough = self.pipe.roughness / self.pipe.int_dia
+        self.deltaP = self.v ** 2\
+            * (self.darcy * self.pipe.length / self.pipe.int_dia) * self.fluid.density / 2
 
 
-def get_inputs(varname):
-    returnval = 0.
-    while True or returnval <= 0:
+    def f_darcy(self):
+        f = 1.0
+        for i in range(1000):
+            fnew = (1/(-2 * math.log10(self.pipe.rel_rough / 3.7 + 2.51
+                    / self.NRe / math.sqrt(f)))) ** 2
+            if abs(fnew-f) < 0.00001 or i == 999:
+                break
+            if i != 999:
+                f = fnew
+            else:
+                f = i
+        return fnew
+
+    def velocity(self):
+        area = math.pi * self.pipe.int_dia ** 2 / 4
+        return self.flowrate / area
+
+    def reynolds(self):
+        return self.pipe.int_dia * self.v\
+                  * self.fluid.density / self.fluid.viscosity
+
+
+def get_input(varname, test, message):
+    returnval = -1
+    while test(returnval):
         try:
             returnval = float(input("Enter {0}: ".format(varname)))
-            if returnval > 0:
-                break
-            else:
-                print("Value must be greater than 0.")
         except ValueError:
-            print("Invalid input!")
-    return returnval
-
-
-def get_input_roughness(varname):
-    returnval = -1.
-    while True or returnval < 0:
-        try:
-            returnval = float(input("Enter {0}: ".format(varname)))
-            if returnval >= 0:
-                break
-            else:
-                print("Value must be non-negative.")
-        except ValueError:
-            print("Invalid input!")
+            print("Input a valid number")
+        if test(returnval):
+            print(message)
     return returnval
 
 
 def main():
 
-    density = get_inputs("fluid density (kg/m3)")
-    viscosity = get_inputs("viscosity (centipoise)")
-    int_dia = get_inputs("pipe internal diameter (mm)")
-    roughness = get_input_roughness("pipe roughness (mm)")
-    length = get_inputs("pipe length (m)")
-    flowrate = get_inputs("fluid flow rate (m3/h)")
-    my_fluid = Fluid(density, viscosity / 1000)
-    my_pipe = Pipe(int_dia / 1000, roughness / 1000, length, my_fluid)
-    my_pipe.update(my_fluid, flowrate / 3600)
-    print("Pipe pressure loss = {0:0.1f} kPa".format(my_pipe.deltaP / 1000.))
-    print("velocity = {0:0.2f} m/s".format(my_pipe.velocity))
-    print("Reynolds number = {0:0.2e}".format(my_pipe.Re))
-    print("Friction factor = {0:0.5f}".format(my_pipe.f))
+    density = get_input("fluid density (kg/m3)", lambda x: x <= 0, "may not be zero or less")
+    viscosity = get_input("viscosity (centipoise)", lambda x: x <= 0, "may not be zero or less") / 1000.
+    int_dia = get_input("pipe internal diameter (mm)", lambda x: x <= 0, "may not be zero or less") / 1000.
+    roughness = get_input("pipe roughness (mm)", lambda x: x < 0, "may not be less than zero") / 1000.
+    length = get_input("pipe length (m)", lambda x: x < 0, "may not be less than zero")
+    flowrate = get_input("fluid flow rate (m3/h)", lambda x: x <= 0, "may not be zero or less") / 3600.
+    my_fluid = Fluid(density, viscosity)
+    my_pipe = Pipe(int_dia, roughness, length)
+    my_flow = Flow(my_pipe, my_fluid, flowrate)
+    print("Pipe pressure loss = {0:0.1f} kPa".format(my_flow.deltaP / 1000.))
+    print("velocity = {0:0.2f} m/s".format(my_flow.v))
+    print("Reynolds number = {0:0.2e}".format(my_flow.NRe))
+    print("Friction factor = {0:0.5f}".format(my_flow.darcy))
 
 
 if __name__ == '__main__':
